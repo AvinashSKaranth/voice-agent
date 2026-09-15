@@ -1,0 +1,29 @@
+{
+  "name": "@voice-agent/agent",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "echo lint-ok",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@voice-agent/protocol": "workspace:*",
+    "@voice-agent/schemas": "workspace:*",
+    "@voice-agent/shared": "workspace:*",
+    "@voice-agent/audio": "workspace:*",
+    "ws": "^8.18.0",
+    "yaml": "^2.6.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "@types/ws": "^8.5.12",
+    "@types/node": "^22.9.0"
+  }
+}

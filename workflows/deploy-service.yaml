@@ -1,0 +1,29 @@
+id: deploy-service
+description: Reference deploy workflow (FR-WF-05): validate → test → build → artifact → stop → deploy → start → health → rollback on failure
+steps:
+  - name: validate-git-clean
+    tools: [shell.exec]
+    approval: auto
+  - name: run-tests
+    tools: [shell.exec]
+    approval: auto
+  - name: build
+    tools: [shell.exec]
+    approval: auto
+  - name: create-artifact
+    tools: [filesystem.write]
+    approval: auto
+  - name: stop-service
+    tools: [service.stop]
+    approval: ask
+  - name: deploy
+    tools: [filesystem.move]
+    approval: ask
+  - name: start-service
+    tools: [service.start]
+    approval: ask
+  - name: health-check
+    tools: [http.health_check]
+    approval: auto
+    verify: http.health_check must be ok
+    rollback: service.start previous version

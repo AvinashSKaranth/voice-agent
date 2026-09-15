@@ -1,0 +1,17 @@
+# voice-agent config (non-secret only — secrets live in OS keychain, BR-04)
+agent:
+  defaultModel: openai/gpt-4o-mini
+  workspaceRoots: []
+  localhostPort: 3790
+  authToken: dev-token-change-me
+voice:
+  asrModel: distil-small.en
+  minSpeechMs: 200
+  minSilenceMs: 600
+  speechPaddingMs: 150
+  bargeInPersistenceMs: 150
+permissions:
+  writeInsideWorkspace: auto
+mcpServers: []
+opencode:
+  baseUrl: http://127.0.0.1:4096
