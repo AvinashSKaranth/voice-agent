@@ -5,5 +5,9 @@
   "identifier": "com.eforge.voice-agent",
   "build": { "frontendDist": "../dist", "devUrl": "http://localhost:1420", "beforeDevCommand": "pnpm dev", "beforeBuildCommand": "pnpm build" },
   "app": { "windows": [{ "title": "Voice Agent", "width": 900, "height": 700 }], "security": { "csp": "default-src 'self'; connect-src 'self' ws://127.0.0.1:3790 http://127.0.0.1:3790" } },
-  "bundle": { "active": true, "targets": ["msi", "nsis"], "icon": ["icons/32x32.png"] }
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]
+  }
 }

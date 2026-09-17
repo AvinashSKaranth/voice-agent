@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Voice Agent UI talks to the local runtime over WebSocket; no direct OS access (FR-UI-03, NFR-06).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -7,15 +7,20 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "tauri": "tauri",
+    "build:installer": "tauri build",
     "test": "echo no-desktop-tests",
     "lint": "echo lint-ok",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json || echo typecheck-skipped"
   },
-  "dependencies": {},
   "devDependencies": {
-    "vite": "^6.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tauri-apps/cli": "^2.11.4",
     "svelte": "^5.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
   }
 }
