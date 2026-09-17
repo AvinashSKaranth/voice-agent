@@ -18,7 +18,10 @@ export function registerBrowserTools(mcp: McpManager, executor?: (tool: string, 
   for (const [name, description] of tools) {
     mcp.registerTool("browser", name, description, { type: "object" }, async (input, signal) => {
       if (executor) return executor(name, input, signal);
-      return { queued: true, tool: `browser.${name}`, input, note: "Playwright MCP not configured — set PLAYWRIGHT_MCP_URL or mcpServers entry" };
+      throw new Error(
+        `browser.${name} unavailable: no browser executor wired. ` +
+        `Install Playwright (pnpm add playwright && npx playwright install chromium) or set PLAYWRIGHT_MCP_URL.`,
+      );
     });
   }
 }

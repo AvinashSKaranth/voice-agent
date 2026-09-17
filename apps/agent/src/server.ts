@@ -4,7 +4,7 @@ import type { AgentEvent, ClientMessage } from "@voice-agent/protocol";
 import { EventBus } from "./agent/eventBus.js";
 import { ConversationState } from "./agent/conversationState.js";
 import { Orchestrator } from "./agent/orchestrator.js";
-import { createProvider } from "./llm/factory.js";
+import { createProvider, resolveSelection } from "./llm/factory.js";
 import { McpManager } from "./mcp/manager.js";
 import { PolicyEngine } from "./permissions/policy.js";
 import { ApprovalStore } from "./permissions/approvals.js";
@@ -14,10 +14,11 @@ import { getSecret } from "./storage/secrets.js";
 import { registerFilesystemTools } from "./tools/filesystem.js";
 import { registerProcessTools } from "./tools/process.js";
 import { registerBrowserTools } from "./browser/playwrightClient.js";
+import { PlaywrightExecutor } from "./browser/playwrightExecutor.js";
 import { registerComputerTools, WindowsComputerAdapter } from "./computer/windows.js";
 import { OpenCodeController } from "./opencode/controller.js";
-import { StubSynthesizer } from "./voice/synthesizer.js";
-import { StubRecognizer } from "./voice/recognizer.js";
+import { SapiSynthesizer } from "./voice/sapiTts.js";
+import { WhisperCppRecognizer } from "./voice/whisperCpp.js";
 
 /** Localhost-only runtime server w/ auth token (NFR-06). Tauri UI + CLI connect here. */
 export async function startServer(port = 3790, authToken = "dev-token-change-me"): Promise<{ close(): void; events: EventBus }> {
@@ -38,16 +39,33 @@ export async function startServer(port = 3790, authToken = "dev-token-change-me"
 
   registerFilesystemTools(mcp);
   registerProcessTools(mcp);
-  registerBrowserTools(mcp);
+  // Real managed Chromium executor (FR-MCP-05). Lazy: browser launches on first tool call.
+  const browser = new PlaywrightExecutor();
+  registerBrowserTools(mcp, (tool, input, signal) => browser.exec(tool, input, signal));
   registerComputerTools(mcp, new WindowsComputerAdapter());
   const opencode = new OpenCodeController(config.opencode.baseUrl);
   opencode.registerTools(mcp);
   for (const s of config.mcpServers) mcp.addServer({ name: s.name, transport: s.transport, command: s.command, args: s.args, url: s.url, enabled: s.enabled });
 
-  const apiKey = (await getSecret("OPENROUTER_API_KEY")) ?? process.env.OPENROUTER_API_KEY ?? "";
-  const llm = createProvider("openrouter", { apiKey: apiKey || "missing-key-dev", model: config.agent.defaultModel });
-  const orchestrator = new Orchestrator({ events, llm, mcp, policy, approvals, db, tts: new StubSynthesizer(), state });
-  void StubRecognizer;
+  // Real provider resolution: PROVIDER/LLM_MODEL env > config. Key from keychain, then env.
+  // Only key NAMES are logged — never values (BR-04).
+  const sel = resolveSelection({ provider: process.env.PROVIDER ?? config.agent.provider, model: process.env.LLM_MODEL ?? config.agent.defaultModel });
+  const apiKey = (await getSecret(sel.keyName)) ?? "";
+  const llm = createProvider(sel.kind, { apiKey: apiKey || "missing-key-dev", model: sel.model, baseUrl: sel.baseUrl, keyName: sel.keyName });
+  log.info("llm-configured", { provider: sel.kind, model: sel.model, keyName: sel.keyName, keyPresent: apiKey.length > 0 });
+
+  // Real local voice I/O: whisper.cpp ASR (managed child process) + Windows SAPI TTS.
+  // The recognizer starts lazily on first mic activation; TTS synthesizes per sentence.
+  const tts = process.platform === "win32" ? new SapiSynthesizer() : undefined;
+  if (!tts) log.warn("tts-unavailable", { platform: process.platform });
+  const recognizer = new WhisperCppRecognizer({
+    model: config.voice.asrModel,
+    promptBias: config.agent.workspaceRoots.join(" "),
+  });
+  if (tts) log.info("voice-io", { asr: "whisper.cpp", tts: process.platform === "win32" ? "sapi" : "none" });
+  void recognizer;
+
+  const orchestrator = new Orchestrator({ events, llm, mcp, policy, approvals, db, tts, state });
 
   const wss = new WebSocketServer({ port, host: "127.0.0.1" });
   const sockets = new Set<WebSocket>();
@@ -96,5 +114,5 @@ export async function startServer(port = 3790, authToken = "dev-token-change-me"
   });
 
   log.info("listening", { port });
-  return { close: () => { wss.close(); db.close(); opencode.shutdown(); }, events };
+  return { close: () => { wss.close(); db.close(); opencode.shutdown(); void browser.close(); }, events };
 }

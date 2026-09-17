@@ -47,6 +47,7 @@ export const McpServerConfigSchema = z.object({
 
 export const AgentConfigSchema = z.object({
   agent: z.object({
+    provider: z.enum(["openrouter", "nvidia"]).default("openrouter"),
     defaultModel: z.string().default("openai/gpt-4o-mini"),
     workspaceRoots: z.array(z.string()).default([]),
     localhostPort: z.number().int().default(3790),

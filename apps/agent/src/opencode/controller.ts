@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { createLogger } from "@voice-agent/shared";
 import { McpManager } from "../mcp/manager.js";
 
@@ -18,8 +18,18 @@ export class OpenCodeController {
       if (res.ok) return this.baseUrl;
     } catch { /* start our own */ }
     this.log.info("starting-opencode-serve", { baseUrl: this.baseUrl });
-    this.child = spawn("opencode", ["serve", "--port", new URL(this.baseUrl).port || "4096"], { shell: false, stdio: "ignore", detached: true });
-    this.child.unref();
+    const port = /^\d+$/.test(new URL(this.baseUrl).port || "") ? new URL(this.baseUrl).port : "4096";
+    const cmd = process.platform === "win32" ? `opencode serve --port ${port}` : "opencode";
+    const args = process.platform === "win32" ? [] : ["serve", "--port", port];
+    this.child = spawn(cmd, args, {
+      shell: process.platform === "win32",
+      stdio: "ignore",
+      detached: process.platform !== "win32",
+    });
+    this.child.on("error", (e) => {
+      this.log.warn("opencode-spawn-failed", { err: String(e).slice(0, 160) });
+    });
+    if (this.child.unref) this.child.unref();
     // Best-effort wait for readiness
     for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 500));
@@ -60,5 +70,17 @@ export class OpenCodeController {
     });
   }
 
-  shutdown(): void { try { this.child?.kill(); } catch { /* noop */ } }
+  shutdown(): void {
+    const child = this.child;
+    this.child = null;
+    if (!child?.pid) return;
+    try {
+      if (process.platform === "win32") {
+        // Shell wrapper spawns the real server as a child — kill the whole tree, no orphans.
+        execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+      } else {
+        child.kill();
+      }
+    } catch { /* already gone */ }
+  }
 }

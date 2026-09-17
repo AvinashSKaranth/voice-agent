@@ -85,9 +85,10 @@ export class Database {
   }
 
   recordApproval(id: string, taskId: string, decision: string, decidedBy: string): void {
-    if (this.useMem) this.mem.approval.push({ id, tool_execution_id: taskId, decision, scope: decision, decided_by: decidedBy, decided_at: nowIso() });
+    const scope = decision === "allow-once" ? "once" : decision === "allow-task" ? "task" : decision === "allow-workspace" ? "workspace" : "deny";
+    if (this.useMem) this.mem.approval.push({ id, tool_execution_id: taskId, decision, scope, decided_by: decidedBy, decided_at: nowIso() });
     else this.sqlite!.prepare("INSERT INTO approval(id,tool_execution_id,decision,scope,decided_by,decided_at) VALUES(?,?,?,?,?,?)")
-      .run(id, taskId, decision, decision, decidedBy, nowIso());
+      .run(id, taskId, decision, scope, decidedBy, nowIso());
   }
 
   recordWorkflowRun(id: string, workflowId: string, taskId: string, status: string, steps: unknown): void {
